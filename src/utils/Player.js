@@ -6,6 +6,7 @@ import { getPlaylistDetail, intelligencePlaylist } from '@/api/playlist';
 import {
   getLyric,
   getMP3,
+  getMusicQualityBr,
   getQualityLadder,
   getTrackDetail,
   scrobble,
@@ -436,11 +437,30 @@ export default class {
       Promise.resolve(null)
     );
   }
+  _shouldUpgradeWithVip(result) {
+    // 默认关闭：只有用户明确接受“几乎每首歌都要借对方账号”才启用
+    if (store.state.settings.vipBorrow?.useForNormalTracks !== true) {
+      return false;
+    }
+    const actualBr = Number(result?.data?.[0]?.br) || 0;
+    const targetBr = getMusicQualityBr(store.state.settings.musicQuality);
+    return actualBr > 0 && actualBr < targetBr;
+  }
   _getAudioSourceFromNetease(track) {
     if (isAccountLoggedIn()) {
       return getMP3(track.id).then(result => {
         const source = this._pickNeteaseSource(track, result);
-        if (source) return source;
+        if (source) {
+          // 主账号能播，但实际码率没到设定档位时，按需借用更高音质
+          const upgradeCookie = this._shouldUpgradeWithVip(result)
+            ? getVipCookie()
+            : '';
+          if (!upgradeCookie) return source;
+          console.debug('[vipBorrow] 主账号音质不足，尝试借用重取');
+          return this._getAudioSourceFromVip(track, upgradeCookie).then(
+            vipSource => vipSource || source
+          );
+        }
 
         // 主账号拿不到地址（VIP / 无版权）时，借用配置的令牌按音质阶梯重取。
         // 只有这一步会用到对方 cookie，播放上报仍走主账号。

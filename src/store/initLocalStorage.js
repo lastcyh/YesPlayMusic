@@ -47,6 +47,7 @@ let localStorage = {
       nickname: '',
       vipType: 0,
       verified: null,
+      useForNormalTracks: false,
     },
   },
   data: {

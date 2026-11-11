@@ -511,6 +511,24 @@
           <button @click="openVipQrCode">扫码添加</button>
           <button v-if="hasVipCookie" @click="clearVipCookie">清除</button>
         </div>
+        <div class="vip-quality-toggle">
+          <div class="vip-quality-text">
+            <div class="vip-quality-title">普通歌曲也使用 VIP 音质</div>
+            <div class="vip-quality-desc">
+              主账号能播但音质达不到设定档位时，也借用对方账号重取。开启后几乎每首歌都会用对方账号请求一次，风控暴露面会明显变大。
+            </div>
+          </div>
+          <div class="toggle">
+            <input
+              id="vip-normal-quality"
+              v-model="vipUseForNormalTracks"
+              type="checkbox"
+              name="vip-normal-quality"
+              :disabled="!enableVipBorrow"
+            />
+            <label for="vip-normal-quality"></label>
+          </div>
+        </div>
         <button class="link" @click="showVipAdvanced = !showVipAdvanced">
           {{ showVipAdvanced ? '收起高级选项' : '高级：手动粘贴 cookie' }}
         </button>
@@ -1330,6 +1348,20 @@ export default {
       else if (config.vipType >= 10) level = '音乐包';
       return `${config.nickname || '已绑定账号'}（${level}）`;
     },
+    vipUseForNormalTracks: {
+      get() {
+        return this.settings.vipBorrow?.useForNormalTracks || false;
+      },
+      set(value) {
+        this.$store.commit('updateSettings', {
+          key: 'vipBorrow',
+          value: {
+            ...(this.settings.vipBorrow || {}),
+            useForNormalTracks: value,
+          },
+        });
+      },
+    },
     proxyPort: {
       get() {
         return this.settings.proxyConfig?.port || '';
@@ -1908,6 +1940,25 @@ input[type='number'] {
     color: var(--color-text);
     .placeholder {
       opacity: 0.58;
+    }
+  }
+  .vip-quality-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    .vip-quality-text {
+      flex: 1;
+    }
+    .vip-quality-title {
+      font-size: 14px;
+      color: var(--color-text);
+    }
+    .vip-quality-desc {
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0.68;
     }
   }
   .link {
