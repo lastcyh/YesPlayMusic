@@ -246,6 +246,16 @@ class Background {
     // hide menu bar on Microsoft Windows and Linux
     this.window.setMenuBarVisibility(false);
 
+    // 生产包也保留调试入口，方便排查渲染层问题
+    this.window.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+      const key = String(input.key || '').toLowerCase();
+      if ((input.control && input.shift && key === 'i') || key === 'f12') {
+        this.window.webContents.toggleDevTools();
+        event.preventDefault();
+      }
+    });
+
     if (process.env.WEBPACK_DEV_SERVER_URL) {
       // Load the url of the dev server if in development mode
       this.window.loadURL(
