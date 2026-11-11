@@ -41,6 +41,11 @@ let localStorage = {
     enableRealIP: false,
     realIP: null,
     shortcuts: shortcuts,
+    vipBorrow: {
+      enabled: false,
+      cookie: '',
+      nickname: '',
+    },
   },
   data: {
     user: {},

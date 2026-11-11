@@ -24,6 +24,7 @@ service.interceptors.request.use(function (config) {
   if (!config.params) config.params = {};
   if (baseURL.length) {
     if (
+      !config.params.cookie &&
       baseURL[0] !== '/' &&
       !process.env.IS_ELECTRON &&
       getCookie('MUSIC_U') !== null

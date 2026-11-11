@@ -6,6 +6,7 @@ import { getPlaylistDetail, intelligencePlaylist } from '@/api/playlist';
 import { getLyric, getMP3, getTrackDetail, scrobble } from '@/api/track';
 import store from '@/store';
 import { isAccountLoggedIn } from '@/utils/auth';
+import { getVipCookie } from '@/utils/vipBorrow';
 import { cacheTrackSource, getTrackSource } from '@/utils/db';
 import { isCreateMpris, isCreateTray } from '@/utils/platform';
 import { Howl, Howler } from 'howler';
@@ -407,8 +408,8 @@ export default class {
   }
   _getAudioSourceFromNetease(track) {
     if (isAccountLoggedIn()) {
-      return getMP3(track.id).then(result => {
-        if (!result.data[0]) return null;
+      const pickSource = result => {
+        if (!result?.data?.[0]) return null;
         if (!result.data[0].url) return null;
         if (result.data[0].freeTrialInfo !== null) return null; // 跳过只能试听的歌曲
         const source = result.data[0].url.replace(/^http:/, 'https:');
@@ -416,6 +417,18 @@ export default class {
           cacheTrackSource(track, source, result.data[0].br);
         }
         return source;
+      };
+
+      return getMP3(track.id).then(result => {
+        const source = pickSource(result);
+        if (source) return source;
+
+        // 主账号拿不到地址（VIP / 无版权）时，借用配置的令牌再取一次。
+        // 只有这一步会用到对方 cookie，播放上报仍走主账号。
+        const vipCookie = getVipCookie();
+        if (!vipCookie) return null;
+        console.debug('[vipBorrow] 主账号无法播放，改用 VIP 令牌取址');
+        return getMP3(track.id, { cookie: vipCookie }).then(pickSource);
       });
     } else {
       return new Promise(resolve => {

@@ -480,6 +480,40 @@
         </div>
       </section>
 
+      <h3>VIP 音源借用</h3>
+      <div class="item">
+        <div class="left">
+          <div class="title">仅在主账号无法播放时借用</div>
+          <div class="description">
+            普通歌曲仍用你自己的账号取播放地址；遇到 VIP / 无版权歌曲时，改用下面填写的令牌再取一次。
+            <br />播放记录、听歌排行、每日推荐都记在你自己的账号上，不会写入对方账号。
+          </div>
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              id="enable-vip-borrow"
+              v-model="enableVipBorrow"
+              type="checkbox"
+              name="enable-vip-borrow"
+            />
+            <label for="enable-vip-borrow"></label>
+          </div>
+        </div>
+      </div>
+      <div id="vip-borrow" :class="{ disabled: !enableVipBorrow }">
+        <input
+          v-model="vipCookieInput"
+          class="text-input"
+          placeholder="MUSIC_U=... （可粘贴整段 cookie）"
+          :disabled="!enableVipBorrow"
+        /><button @click="saveVipCookie">保存</button
+        ><button @click="verifyVipCookie">验证</button>
+        <div v-if="vipCookieStatus" class="vip-borrow-status">
+          {{ vipCookieStatus }}
+        </div>
+      </div>
+
       <h3>{{ $t('settings.customization') }}</h3>
       <div class="item">
         <div class="left">
@@ -817,6 +851,8 @@ import {
   bytesToSize,
 } from '@/utils/common';
 import { countDBSize, clearDB } from '@/utils/db';
+import { normalizeVipCookie } from '@/utils/vipBorrow';
+import request from '@/utils/request';
 import pkg from '../../package.json';
 
 const electron =
@@ -846,6 +882,8 @@ export default {
         recording: false,
       },
       recordedShortcut: [],
+      vipCookieInput: '',
+      vipCookieStatus: '',
     };
   },
   computed: {
@@ -1247,6 +1285,17 @@ export default {
         });
       },
     },
+    enableVipBorrow: {
+      get() {
+        return this.settings.vipBorrow?.enabled || false;
+      },
+      set(value) {
+        this.$store.commit('updateSettings', {
+          key: 'vipBorrow',
+          value: { ...(this.settings.vipBorrow || {}), enabled: value },
+        });
+      },
+    },
     proxyPort: {
       get() {
         return this.settings.proxyConfig?.port || '';
@@ -1358,6 +1407,10 @@ export default {
   },
   created() {
     this.countDBSize('tracks');
+    this.vipCookieInput = this.settings.vipBorrow?.cookie || '';
+    this.vipCookieStatus = this.settings.vipBorrow?.nickname
+      ? `已配置：${this.settings.vipBorrow.nickname}`
+      : '';
     if (process.env.IS_ELECTRON) this.getAllOutputDevices();
   },
   activated() {
@@ -1366,6 +1419,61 @@ export default {
   },
   methods: {
     ...mapActions(['showToast']),
+    saveVipCookie() {
+      const cookie = normalizeVipCookie(this.vipCookieInput);
+      if (this.enableVipBorrow && !cookie) {
+        this.showToast('请先填入朋友的 MUSIC_U');
+        return;
+      }
+      this.vipCookieInput = cookie;
+      this.$store.commit('updateSettings', {
+        key: 'vipBorrow',
+        value: {
+          ...(this.settings.vipBorrow || {}),
+          enabled: this.enableVipBorrow,
+          cookie,
+          nickname: cookie ? this.settings.vipBorrow?.nickname || '' : '',
+        },
+      });
+      this.vipCookieStatus = cookie ? '已保存（未验证）' : '未配置';
+      this.showToast(cookie ? 'VIP 令牌已保存' : 'VIP 令牌已清空');
+    },
+    async verifyVipCookie() {
+      const cookie = normalizeVipCookie(this.vipCookieInput);
+      if (!cookie) {
+        this.vipCookieStatus = '请先填入朋友的 MUSIC_U';
+        this.showToast(this.vipCookieStatus);
+        return;
+      }
+
+      this.vipCookieStatus = '验证中…';
+      try {
+        const result = await request({
+          url: '/login/status',
+          method: 'get',
+          params: { cookie, timestamp: new Date().getTime() },
+        });
+        const profile = result?.data?.profile;
+        if (!profile) {
+          this.vipCookieStatus = 'Cookie 无效或已过期';
+        } else {
+          this.vipCookieStatus = `已验证：${profile.nickname}`;
+          this.vipCookieInput = cookie;
+          this.$store.commit('updateSettings', {
+            key: 'vipBorrow',
+            value: {
+              ...(this.settings.vipBorrow || {}),
+              cookie,
+              nickname: profile.nickname || '',
+            },
+          });
+        }
+      } catch (error) {
+        console.warn('[vipBorrow] 验证失败', error);
+        this.vipCookieStatus = '验证请求失败，请检查网络或 API 地址';
+      }
+      this.showToast(this.vipCookieStatus);
+    },
     getAllOutputDevices() {
       navigator.mediaDevices.enumerateDevices().then(devices => {
         this.allOutputDevices = devices.filter(device => {
@@ -1690,12 +1798,26 @@ input[type='number'] {
 }
 
 #proxy-form,
-#real-ip {
+#real-ip,
+#vip-borrow {
   display: flex;
   align-items: center;
 }
+#vip-borrow {
+  flex-wrap: wrap;
+  .text-input {
+    min-width: 320px;
+  }
+  .vip-borrow-status {
+    flex-basis: 100%;
+    margin-top: 8px;
+    font-size: 12px;
+    opacity: 0.68;
+  }
+}
 #proxy-form.disabled,
-#real-ip.disabled {
+#real-ip.disabled,
+#vip-borrow.disabled {
   opacity: 0.47;
   button:hover {
     transform: unset;

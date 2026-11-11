@@ -1,5 +1,6 @@
 import { isAccountLoggedIn } from './auth';
 import { refreshCookie } from '@/api/auth';
+import { isVipBorrowEnabled } from '@/utils/vipBorrow';
 import dayjs from 'dayjs';
 import store from '@/store';
 
@@ -96,7 +97,10 @@ export function isTrackPlayable(track) {
     return result;
   }
   if (track.fee === 1 || track.privilege?.fee === 1) {
-    if (isAccountLoggedIn() && store.state.data.user.vipType === 11) {
+    if (
+      (isAccountLoggedIn() && store.state.data.user.vipType === 11) ||
+      isVipBorrowEnabled()
+    ) {
       result.playable = true;
     } else {
       result.playable = false;
