@@ -30,7 +30,12 @@
           <router-link :to="getTitleLink(item)">{{ item.name }}</router-link>
         </div>
         <div v-if="type !== 'artist' && subText !== 'none'" class="info">
-          <span v-html="getSubText(item)"></span>
+          <router-link
+            v-if="subText === 'artist' && getArtist(item)"
+            :to="`/artist/${getArtist(item).id}`"
+            >{{ getArtist(item).name }}</router-link
+          >
+          <span v-else>{{ getSubText(item) }}</span>
         </div>
       </div>
     </div>
@@ -66,6 +71,12 @@ export default {
     },
   },
   methods: {
+    getArtist(item) {
+      if (item.artist !== undefined) return item.artist;
+      if (item.artists !== undefined && item.artists.length > 0)
+        return item.artists[0];
+      return null;
+    },
     getSubText(item) {
       if (this.subText === 'copywriter') return item.copywriter;
       if (this.subText === 'description') return item.description;
@@ -74,10 +85,8 @@ export default {
       if (this.subText === 'releaseYear')
         return new Date(item.publishTime).getFullYear();
       if (this.subText === 'artist') {
-        if (item.artist !== undefined)
-          return `<a href="/artist/${item.artist.id}">${item.artist.name}</a>`;
-        if (item.artists !== undefined)
-          return `<a href="/artist/${item.artists[0].id}">${item.artists[0].name}</a>`;
+        const artist = this.getArtist(item);
+        return artist ? artist.name : '';
       }
       if (this.subText === 'albumType+releaseYear') {
         let albumType = item.type;

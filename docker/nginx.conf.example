@@ -4,6 +4,9 @@ server {
   listen  [::]:80;
   server_name  localhost;
 
+  # 云盘上传走 /api/ 代理，nginx 默认限制 1MB 会返回 413
+  client_max_body_size 100m;
+
   location / {
     root      /usr/share/nginx/html;
     index     index.html;
