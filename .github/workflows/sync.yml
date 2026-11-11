@@ -3,11 +3,8 @@ name: Upstream Sync
 permissions:
   contents: write
   issues: write
-  actions: write
 
 on:
-  schedule:
-    - cron: '0 * * * *' # every hour
   workflow_dispatch:
 
 jobs:
@@ -32,7 +29,7 @@ jobs:
           upstream_sync_repo: qier222/YesPlayMusic
           upstream_sync_branch: master
           target_sync_branch: master
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
           test_mode: false
 
       - name: Sync check
@@ -43,6 +40,6 @@ jobs:
           title: '🚨 同步失败 | Sync Fail'
           labels: '🚨 Sync Fail'
           body: |
-            Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork.
+            自动同步已改为手动触发。请在 Actions 页面选择 Upstream Sync 并点击 Run workflow。
 
-            由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次。
+            如果出现冲突，说明本地改动与上游修改了同一处代码，需要手动解决。
