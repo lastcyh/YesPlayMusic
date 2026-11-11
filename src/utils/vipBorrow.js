@@ -71,9 +71,10 @@ export function normalizeVipCookie(raw) {
  */
 export function isVipBorrowEnabled() {
   const config = readVipConfig();
-  return (
-    !!config && config.enabled === true && !!normalizeVipCookie(config.cookie)
-  );
+  if (!config || config.enabled !== true) return false;
+  // 明确验证失败（cookie 过期/被踢）时不再放行，避免整片歌曲显示可播却点不动
+  if (config.verified === false) return false;
+  return !!normalizeVipCookie(config.cookie);
 }
 
 /**

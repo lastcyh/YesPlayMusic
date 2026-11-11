@@ -45,6 +45,8 @@ let localStorage = {
       enabled: false,
       cookie: '',
       nickname: '',
+      vipType: 0,
+      verified: null,
     },
   },
   data: {

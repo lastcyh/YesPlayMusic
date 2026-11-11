@@ -40,13 +40,15 @@ export function loginWithEmail(params) {
 
 /**
  * 二维码key生成接口
+ * @param {Object=} params 透传参数，例如 { cookie: '' } 以匿名身份请求
  */
-export function loginQrCodeKey() {
+export function loginQrCodeKey(params = {}) {
   return request({
     url: '/login/qr/key',
     method: 'get',
     params: {
       timestamp: new Date().getTime(),
+      ...params,
     },
   });
 }
@@ -74,14 +76,16 @@ export function loginQrCodeCreate(params) {
  * 二维码检测扫码状态接口
  * 说明: 轮询此接口可获取二维码扫码状态,800为二维码过期,801为等待扫码,802为待确认,803为授权登录成功(803状态码下会返回cookies)
  * @param {string} key
+ * @param {Object=} params 透传参数，例如 { cookie: '' } 以匿名身份请求
  */
-export function loginQrCodeCheck(key) {
+export function loginQrCodeCheck(key, params = {}) {
   return request({
     url: '/login/qr/check',
     method: 'get',
     params: {
       key,
       timestamp: new Date().getTime(),
+      ...params,
     },
   });
 }

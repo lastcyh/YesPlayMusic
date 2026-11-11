@@ -9,18 +9,47 @@ import {
 } from '@/utils/db';
 
 /**
+ * 音质档位，从高到低。数值直接透传给 /song/url 的 br 参数。
+ * 999000 = Hi-Res，350000 = 无损（设置里的 flac 档），320000/192000/128000 为有损档。
+ */
+const QUALITY_LADDER = [999000, 350000, 320000, 192000, 128000];
+
+/**
+ * 把设置里的 musicQuality 归一成码率数字。
+ * @param {string|number=} quality
+ * @returns {number}
+ */
+export function getMusicQualityBr(quality) {
+  const preferred = Number(quality === 'flac' ? 350000 : quality || 320000);
+  return Number.isFinite(preferred) && preferred > 0 ? preferred : 320000;
+}
+
+/**
+ * 生成从用户设定档位向下递减的码率数组。
+ * 借用他人账号取址时，先从自己能接受的最高档试起，没有权限再逐级降。
+ * @param {string|number=} quality
+ * @returns {number[]}
+ */
+export function getQualityLadder(quality) {
+  const preferred = getMusicQualityBr(quality);
+  const ladder = QUALITY_LADDER.filter(br => br <= preferred);
+  return ladder.length ? ladder : [preferred];
+}
+
+/**
  * 获取音乐 url
  * 说明 : 使用歌单详情接口后 , 能得到的音乐的 id, 但不能得到的音乐 url, 调用此接口, 传入的音乐 id( 可多个 , 用逗号隔开 ), 可以获取对应的音乐的 url,
  * !!!未登录状态返回试听片段(返回字段包含被截取的正常歌曲的开始时间和结束时间)
  * @param {string} id - 音乐的 id，例如 id=405998841,33894312
  * @param {Object=} options
  * @param {string=} options.cookie - 显式指定 cookie，用于 VIP 音源借用；不传则沿用当前登录态
+ * @param {number=} options.br - 显式指定码率，覆盖设置里的音质档位
  */
 export function getMP3(id, options = {}) {
   const getBr = () => {
+    if (options.br) return options.br;
     // 当返回的 quality >= 400000时，就会优先返回 hi-res
-    const quality = store.state.settings?.musicQuality ?? '320000';
-    return quality === 'flac' ? '350000' : quality;
+    return getMusicQualityBr(store.state.settings?.musicQuality);
   };
 
   return request({
