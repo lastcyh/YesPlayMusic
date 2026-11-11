@@ -3,16 +3,34 @@ import { doLogout, getCookie } from '@/utils/auth';
 import axios from 'axios';
 
 let baseURL = '';
+
+/**
+ * 校验构建期注入的 baseURL。
+ * Windows 上的 bash 会把以斜杠开头的环境变量值当成 POSIX 路径，
+ * 把 `/api` 转成 `C:/Program Files/Git/api`，这里直接丢弃这种脏值。
+ * @param {string|undefined} value
+ * @param {string} fallback
+ * @returns {string}
+ */
+function resolveBaseURL(value, fallback) {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value) || value.startsWith('/')) return value;
+  console.warn('[request] 非法的 baseURL，已回退:', value);
+  return fallback;
+}
+
 // Web 和 Electron 跑在不同端口避免同时启动时冲突
 if (process.env.IS_ELECTRON) {
   if (process.env.NODE_ENV === 'production') {
-    baseURL = process.env.VUE_APP_ELECTRON_API_URL || '/api';
+    baseURL = resolveBaseURL(process.env.VUE_APP_ELECTRON_API_URL, '/api');
   } else {
-    baseURL =
-      process.env.VUE_APP_ELECTRON_API_URL_DEV || 'http://127.0.0.1:10754';
+    baseURL = resolveBaseURL(
+      process.env.VUE_APP_ELECTRON_API_URL_DEV,
+      'http://127.0.0.1:10754'
+    );
   }
 } else {
-  baseURL = process.env.VUE_APP_NETEASE_API_URL || '/api';
+  baseURL = resolveBaseURL(process.env.VUE_APP_NETEASE_API_URL, '/api');
 }
 
 const service = axios.create({
