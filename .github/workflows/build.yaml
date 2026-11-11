@@ -7,13 +7,6 @@ concurrency:
   group: build-win-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  VUE_APP_NETEASE_API_URL: /api
-  VUE_APP_ELECTRON_API_URL: /api
-  VUE_APP_ELECTRON_API_URL_DEV: http://127.0.0.1:10754
-  VUE_APP_LASTFM_API_KEY: 09c55292403d961aa517ff7f5e8a3d9c
-  VUE_APP_LASTFM_API_SHARED_SECRET: 307c9fda32b3904e53654baff215cb67
-
 jobs:
   build:
     name: Windows x64
@@ -29,6 +22,20 @@ jobs:
         with:
           node-version: 16
           cache: yarn
+
+      # 不能通过 env 传 /api：Windows runner 上的 bash 会把以斜杠开头的值
+      # 当成 POSIX 路径转换成 C:/Program Files/Git/api，写进 .env 文件才安全
+      - name: Write .env
+        shell: bash
+        run: |
+          printf '%s\n' \
+            'VUE_APP_NETEASE_API_URL=/api' \
+            'VUE_APP_ELECTRON_API_URL=/api' \
+            'VUE_APP_ELECTRON_API_URL_DEV=http://127.0.0.1:10754' \
+            'VUE_APP_LASTFM_API_KEY=09c55292403d961aa517ff7f5e8a3d9c' \
+            'VUE_APP_LASTFM_API_SHARED_SECRET=307c9fda32b3904e53654baff215cb67' \
+            > .env
+          cat .env
 
       - name: Install dependencies
         shell: bash
@@ -48,6 +55,15 @@ jobs:
       - name: Build installer
         shell: bash
         run: yarn electron:build
+
+      - name: Verify bundle has no leaked host path
+        shell: bash
+        run: |
+          if grep -a -q "Program Files/Git/api" dist_electron/win-unpacked/resources/app.asar; then
+            echo "::error::bundle contains a Git Bash converted path instead of /api"
+            exit 1
+          fi
+          echo "bundle clean"
 
       - name: Upload exe
         uses: actions/upload-artifact@v4
