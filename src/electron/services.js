@@ -9,6 +9,8 @@ export async function startNeteaseMusicApi() {
   // Load the NCM API.
   await server.serveNcmApi({
     port: 10754,
+    // 只监听回环地址：默认的 0.0.0.0 会把接口暴露到局域网，并触发 Windows 防火墙弹窗
+    host: '127.0.0.1',
     moduleDefs: require('../ncmModDef'),
   });
 }
