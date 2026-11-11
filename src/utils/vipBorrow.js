@@ -71,7 +71,9 @@ export function normalizeVipCookie(raw) {
  */
 export function isVipBorrowEnabled() {
   const config = readVipConfig();
-  return !!config && config.enabled === true && !!normalizeVipCookie(config.cookie);
+  return (
+    !!config && config.enabled === true && !!normalizeVipCookie(config.cookie)
+  );
 }
 
 /**
