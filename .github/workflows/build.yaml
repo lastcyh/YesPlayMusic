@@ -65,6 +65,16 @@ jobs:
           fi
           echo "bundle clean"
 
+      - name: Inspect native module packaging
+        shell: bash
+        run: |
+          echo "== resources =="
+          ls dist_electron/win-unpacked/resources/
+          echo "== unpacked .node =="
+          find dist_electron/win-unpacked/resources/app.asar.unpacked -name "*.node" 2>/dev/null | head -10
+          echo "== unblock files inside asar =="
+          npx --yes @electron/asar list dist_electron/win-unpacked/resources/app.asar 2>/dev/null | grep -i "unblockneteasemusic" | head -10 || true
+
       - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
