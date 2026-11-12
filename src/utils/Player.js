@@ -572,21 +572,28 @@ export default class {
       }
     };
 
-    const retrieveSongInfo = await ipcRenderer.invoke(
-      'unblock-music',
-      store.state.settings.unmSource,
-      track,
-      {
-        enableFlac: store.state.settings.unmEnableFlac || null,
-        proxyUri: store.state.settings.unmProxyUri || null,
-        searchMode: determineSearchMode(store.state.settings.unmSearchMode),
-        config: {
-          'joox:cookie': store.state.settings.unmJooxCookie || null,
-          'qq:cookie': store.state.settings.unmQQCookie || null,
-          'ytdl:exe': store.state.settings.unmYtDlExe || null,
-        },
-      }
-    );
+    let retrieveSongInfo = null;
+    try {
+      retrieveSongInfo = await ipcRenderer.invoke(
+        'unblock-music',
+        store.state.settings.unmSource,
+        track,
+        {
+          enableFlac: store.state.settings.unmEnableFlac || null,
+          proxyUri: store.state.settings.unmProxyUri || null,
+          searchMode: determineSearchMode(store.state.settings.unmSearchMode),
+          config: {
+            'joox:cookie': store.state.settings.unmJooxCookie || null,
+            'qq:cookie': store.state.settings.unmQQCookie || null,
+            'ytdl:exe': store.state.settings.unmYtDlExe || null,
+          },
+        }
+      );
+    } catch (error) {
+      // 换源失败不应该打断播放链路，交给上层走后续兜底
+      console.warn('[unblock] 换源失败', error);
+      return null;
+    }
 
     if (store.state.settings.automaticallyCacheSongs && retrieveSongInfo?.url) {
       // 对于来自 bilibili 的音源
@@ -600,6 +607,7 @@ export default class {
     }
 
     if (!retrieveSongInfo) {
+      console.warn('[unblock] 未匹配到可用音源');
       return null;
     }
 
