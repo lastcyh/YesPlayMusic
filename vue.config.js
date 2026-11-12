@@ -92,6 +92,8 @@ module.exports = {
         copyright: 'Copyright © YesPlayMusic',
         // compression: "maximum", // 机器好的可以打开，配置压缩，开启后会让 .AppImage 格式的客户端启动缓慢
         asar: true,
+        // 原生模块（napi-rs 的 .node）不能从 asar 内加载，必须解包到 app.asar.unpacked
+        asarUnpack: ['**/node_modules/@unblockneteasemusic/**', '**/*.node'],
         publish: [
           {
             provider: 'github',

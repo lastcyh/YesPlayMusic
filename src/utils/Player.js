@@ -416,16 +416,23 @@ export default class {
   _getAudioSourceFromCache(id) {
     return getTrackSource(id).then(t => {
       if (!t) return null;
+      // 缓存也要能看出是不是 VIP 借来的音源
+      if (t.from === 'vip') {
+        store.commit('updateVipSource', {
+          active: true,
+          br: Number(t.bitRate) || 0,
+        });
+      }
       return this._getAudioSourceBlobURL(t.source);
     });
   }
-  _pickNeteaseSource(track, result) {
+  _pickNeteaseSource(track, result, from = 'netease') {
     if (!result?.data?.[0]) return null;
     if (!result.data[0].url) return null;
     if (result.data[0].freeTrialInfo !== null) return null; // 跳过只能试听的歌曲
     const source = result.data[0].url.replace(/^http:/, 'https:');
     if (store.state.settings.automaticallyCacheSongs) {
-      cacheTrackSource(track, source, result.data[0].br);
+      cacheTrackSource(track, source, result.data[0].br, from);
     }
     return source;
   }
@@ -439,7 +446,7 @@ export default class {
             if (source) return source;
             return getMP3(track.id, { cookie: vipCookie, br })
               .then(result => {
-                const picked = this._pickNeteaseSource(track, result);
+                const picked = this._pickNeteaseSource(track, result, 'vip');
                 if (picked) {
                   store.commit('updateVipSource', {
                     active: true,
