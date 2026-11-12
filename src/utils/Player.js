@@ -14,6 +14,7 @@ import {
 import store from '@/store';
 import { isAccountLoggedIn } from '@/utils/auth';
 import { getVipCookie } from '@/utils/vipBorrow';
+import request from '@/utils/request';
 import { cacheTrackSource, getTrackSource } from '@/utils/db';
 import { isCreateMpris, isCreateTray } from '@/utils/platform';
 import { Howl, Howler } from 'howler';
@@ -23,6 +24,11 @@ import { decode as base642Buffer } from '@/utils/base64';
 const PLAY_PAUSE_FADE_DURATION = 200;
 
 const INDEX_IN_PLAY_NEXT = -1;
+
+// 连续多首取址失败才怀疑 VIP 令牌失效，避免单曲没版权就误报
+const VIP_FAIL_THRESHOLD = 3;
+let vipFailStreak = 0;
+let vipHealthChecking = false;
 
 /**
  * @readonly
@@ -426,16 +432,66 @@ export default class {
   _getAudioSourceFromVip(track, vipCookie) {
     // 从用户设定的最高音质往下试，取到哪档算哪档，效果等同于“自己就是这个等级的会员”
     const ladder = getQualityLadder(store.state.settings?.musicQuality);
-    return ladder.reduce(
-      (promise, br) =>
-        promise.then(source => {
-          if (source) return source;
-          return getMP3(track.id, { cookie: vipCookie, br })
-            .then(result => this._pickNeteaseSource(track, result))
-            .catch(() => null); // 单档失败不阻断后续档位
-        }),
-      Promise.resolve(null)
-    );
+    return ladder
+      .reduce(
+        (promise, br) =>
+          promise.then(source => {
+            if (source) return source;
+            return getMP3(track.id, { cookie: vipCookie, br })
+              .then(result => {
+                const picked = this._pickNeteaseSource(track, result);
+                if (picked) {
+                  store.commit('updateVipSource', {
+                    active: true,
+                    br: Number(result?.data?.[0]?.br) || br,
+                  });
+                }
+                return picked;
+              })
+              .catch(() => null); // 单档失败不阻断后续档位
+          }),
+        Promise.resolve(null)
+      )
+      .then(source => {
+        if (source) {
+          vipFailStreak = 0;
+        } else {
+          this._reportVipFailure();
+        }
+        return source;
+      });
+  }
+  _reportVipFailure() {
+    vipFailStreak += 1;
+    if (vipFailStreak < VIP_FAIL_THRESHOLD) return;
+
+    const config = store.state.settings.vipBorrow;
+    if (!config || config.verified === false || vipHealthChecking) return;
+
+    // 连续失败后真正验一次令牌，避免“某几首歌没版权”被误判成令牌过期
+    vipHealthChecking = true;
+    request({
+      url: '/login/status',
+      method: 'get',
+      params: { cookie: getVipCookie(), timestamp: new Date().getTime() },
+    })
+      .then(result => {
+        if (!result) return; // 请求异常，不下结论
+        if (result?.data?.profile) {
+          vipFailStreak = 0;
+          return;
+        }
+        store.commit('updateSettings', {
+          key: 'vipBorrow',
+          value: { ...store.state.settings.vipBorrow, verified: false },
+        });
+        store.dispatch('showToast', 'VIP 令牌已失效，请到设置里重新绑定');
+        vipFailStreak = 0;
+      })
+      .catch(() => {})
+      .finally(() => {
+        vipHealthChecking = false;
+      });
   }
   _shouldUpgradeWithVip(result) {
     // 默认关闭：只有用户明确接受“几乎每首歌都要借对方账号”才启用
@@ -451,6 +507,10 @@ export default class {
       return getMP3(track.id).then(result => {
         const source = this._pickNeteaseSource(track, result);
         if (source) {
+          store.commit('updateVipSource', {
+            active: false,
+            br: Number(result?.data?.[0]?.br) || 0,
+          });
           // 主账号能播，但实际码率没到设定档位时，按需借用更高音质
           const upgradeCookie = this._shouldUpgradeWithVip(result)
             ? getVipCookie()
@@ -544,6 +604,8 @@ export default class {
     return this._getAudioSourceBlobURL(buffer);
   }
   _getAudioSource(track) {
+    // 每次取源先复位标记，避免切歌后残留上一首的 VIP 标识
+    store.commit('updateVipSource', { active: false, br: 0 });
     return this._getAudioSourceFromCache(String(track.id))
       .then(source => {
         return source ?? this._getAudioSourceFromNetease(track);

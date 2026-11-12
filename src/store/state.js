@@ -48,6 +48,11 @@ export default {
   },
   dailyTracks: [],
   lastfm: JSON.parse(localStorage.getItem('lastfm')) || {},
+  // 当前播放音源是否来自 VIP 借用，仅内存态，不持久化
+  vipSource: {
+    active: false,
+    br: 0,
+  },
   player: JSON.parse(localStorage.getItem('player')),
   settings: JSON.parse(localStorage.getItem('settings')),
   data: JSON.parse(localStorage.getItem('data')),

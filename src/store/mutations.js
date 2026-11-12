@@ -23,6 +23,9 @@ export default {
   updateSettings(state, { key, value }) {
     state.settings[key] = value;
   },
+  updateVipSource(state, payload) {
+    state.vipSource = payload;
+  },
   updateData(state, { key, value }) {
     state.data[key] = value;
   },

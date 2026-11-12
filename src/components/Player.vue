@@ -31,11 +31,19 @@
             @click="goToAlbum"
           />
           <div class="track-info" :title="audioSource">
-            <div
-              :class="['name', { 'has-list': hasList() }]"
-              @click="hasList() && goToList()"
-            >
-              {{ currentTrack.name }}
+            <div class="name-row">
+              <div
+                :class="['name', { 'has-list': hasList() }]"
+                @click="hasList() && goToList()"
+              >
+                {{ currentTrack.name }}
+              </div>
+              <span
+                v-if="vipSource.active"
+                class="vip-source-tag"
+                :title="vipSourceTitle"
+                >VIP</span
+              >
             </div>
             <div class="artist">
               <span
@@ -201,9 +209,13 @@ export default {
     };
   },
   computed: {
-    ...mapState(['player', 'settings', 'data']),
+    ...mapState(['player', 'settings', 'data', 'vipSource']),
     currentTrack() {
       return this.player.currentTrack;
+    },
+    vipSourceTitle() {
+      const br = Number(this.vipSource?.br) || 0;
+      return br ? `VIP 音源 · ${Math.round(br / 1000)}Kbps` : 'VIP 音源';
     },
     volume: {
       get() {
@@ -395,12 +407,29 @@ export default {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      margin-bottom: 4px;
+    }
+    .vip-source-tag {
+      flex-shrink: 0;
+      padding: 0 5px;
+      font-size: 10px;
+      line-height: 14px;
+      font-weight: 600;
+      border-radius: 3px;
+      color: #3f2c00;
+      background: #e8b923;
+    }
     .name {
       font-weight: 600;
       font-size: 16px;
       opacity: 0.88;
       color: var(--color-text);
-      margin-bottom: 4px;
+      min-width: 0;
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 1;
