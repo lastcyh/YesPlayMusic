@@ -12,7 +12,11 @@ export function setCookies(string) {
 }
 
 export function getCookie(key) {
-  return Cookies.get(key) ?? localStorage.getItem(`cookie-${key}`);
+  // 只认应用自己写进 localStorage 的值。
+  // Electron 里网易云返回的 cookie 带 Domain=.music.163.com，覆盖写入 localhost 常被拒绝，
+  // document.cookie 会一直残留第一次登录的账号；回退读取会让已退出的账号"复活"。
+  const value = localStorage.getItem(`cookie-${key}`);
+  return value || undefined;
 }
 
 export function removeCookie(key) {

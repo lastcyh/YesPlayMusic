@@ -42,13 +42,13 @@ const service = axios.create({
 service.interceptors.request.use(function (config) {
   if (!config.params) config.params = {};
   if (baseURL.length) {
-    if (
-      config.params.cookie === undefined &&
-      baseURL[0] !== '/' &&
-      !process.env.IS_ELECTRON &&
-      getCookie('MUSIC_U') !== null
-    ) {
-      config.params.cookie = `MUSIC_U=${getCookie('MUSIC_U')};`;
+    // 显式指定的 cookie（VIP 音源借用）优先；其余请求统一带上当前登录态。
+    // Electron 下 document.cookie 可能残留旧账号，这里用 query 参数强制覆盖浏览器 cookie。
+    if (config.params.cookie === undefined) {
+      const musicU = getCookie('MUSIC_U');
+      if (musicU) {
+        config.params.cookie = `MUSIC_U=${musicU};`;
+      }
     }
   } else {
     console.error("You must set up the baseURL in the service's config");
