@@ -1955,10 +1955,11 @@ input[type='number'] {
       color: var(--color-text);
     }
     .vip-quality-desc {
-      margin-top: 4px;
-      font-size: 12px;
+      margin-top: 0.5em;
+      font-size: 13px;
       line-height: 1.6;
-      opacity: 0.68;
+      opacity: 0.7;
+      color: var(--color-text);
     }
   }
   .link {
@@ -1983,8 +1984,9 @@ input[type='number'] {
     }
   }
   .vip-borrow-status {
-    font-size: 12px;
-    opacity: 0.68;
+    font-size: 13px;
+    opacity: 0.7;
+    color: var(--color-text);
   }
 }
 #proxy-form.disabled,
